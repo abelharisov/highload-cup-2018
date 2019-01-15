@@ -1,9 +1,9 @@
 package main
 
 import (
-	"strings"
-	"strconv"
 	"errors"
+	"strconv"
+	"strings"
 )
 
 type AccountFilter struct {
@@ -13,16 +13,20 @@ type AccountFilter struct {
 }
 
 type AccountsQuery struct {
-	Limit int32
+	Limit   int64
 	Filters []AccountFilter
 }
 
 var NoLimitError = errors.New("No limit")
 
-func CreateAccountsFilter(query map[string][]string) (accountsQuery AccountsQuery, err error) {
+func CreateAccountsQuery(query map[string][]string) (accountsQuery AccountsQuery, err error) {
 	if limit, ok := query["limit"]; ok {
-		if parsed, e := strconv.ParseInt(limit[0], 10, 32); e != nil {
-			accountsQuery.Limit = int32(parsed)
+		if parsed, e := strconv.ParseInt(limit[0], 10, 64); e == nil {
+			if parsed == 0 {
+				err = NoLimitError
+				return
+			}
+			accountsQuery.Limit = parsed
 			delete(query, "limit")
 		} else {
 			err = NoLimitError

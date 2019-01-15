@@ -11,11 +11,15 @@ type AccountsFilterHandler struct {
 }
 
 func (handler *AccountsFilterHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	accountsFilter := CreateAccountsFilter(request.URL.Query())
+	accountsQuery, err := CreateAccountsQuery(request.URL.Query())
+
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Fprint(response, "{\"accounts\":")
 	encoder := json.NewEncoder(response)
-	accounts := handler.storage.Find(&accountsFilter)
+	accounts := handler.storage.Find(&accountsQuery)
 	encoder.Encode(accounts)
 	fmt.Fprint(response, "}")
 }

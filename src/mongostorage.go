@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"time"
+
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
 )
@@ -41,18 +42,19 @@ func (storage *MongoStorage) DropDatabase() {
 	storage.client.Database(storage.Database).Drop(context)
 }
 
-func (storage *MongoStorage) Find(filters *AccountsFilter) (result []map[string]interface{}) {
+func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]interface{}) {
 	context, _ := context.WithTimeout(context.Background(), time.Minute)
-	
-	query := make(map[string]interface{})
-	for _, filter := range filters.Filters {
+
+	filters := make(map[string]interface{})
+	for _, filter := range query.Filters {
 		if filter.Operation == "eq" {
-			query[filter.Field] = filter.Argument
+			filters[filter.Field] = filter.Argument
 		}
 	}
 	options := options.Find()
-	options.SetSort(struct{id int32}{-1})
-	cursor, err := storage.accounts.Find(context, query, options)
+	options.SetSort(struct{ id int32 }{-1})
+	options.SetLimit(query.Limit)
+	cursor, err := storage.accounts.Find(context, filters, options)
 	if err != nil {
 		panic(err)
 	}
