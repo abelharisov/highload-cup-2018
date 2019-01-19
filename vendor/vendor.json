@@ -245,6 +245,12 @@
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "e6919f6577db79269a6443b9dc46d18f2238fb5d",
 			"revisionTime": "2018-12-15T12:10:58Z"
+		},
+		{
+			"checksumSHA1": "6Rfu8Y/96ALpk4VIC1dK3uo+WYc=",
+			"path": "gopkg.in/oleiade/reflections.v1",
+			"revision": "2b6ec3da648e3e834dc41bad8d9ed7f2dc6a9496",
+			"revisionTime": "2016-08-17T06:38:38Z"
 		}
 	],
 	"rootPath": "highloadcup"
