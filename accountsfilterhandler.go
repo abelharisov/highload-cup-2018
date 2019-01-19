@@ -13,8 +13,9 @@ type AccountsFilterHandler struct {
 func (handler *AccountsFilterHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	accountsQuery, err := CreateAccountsQuery(request.URL.Query())
 
-	if err != nil {
-		panic(err)
+	if err == NoLimitError {
+		response.WriteHeader(400)
+		return
 	}
 
 	fmt.Fprint(response, "{\"accounts\":")

@@ -21,7 +21,7 @@ func (files byFileName) Less(i, j int) bool {
 }
 
 // Parse files in dataPath and put to Storage
-func Parse(dataPath string, storage Storage) error {
+func Parse(dataPath string, storage Storage, onlyOne bool) error {
 	zipReader, err := zip.OpenReader(dataPath)
 	if err != nil {
 		return err
@@ -49,6 +49,10 @@ func Parse(dataPath string, storage Storage) error {
 		reader.Close()
 
 		storage.LoadAccounts(accounts)
+
+		if onlyOne {
+			break
+		}
 	}
 
 	return nil

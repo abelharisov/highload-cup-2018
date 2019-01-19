@@ -1,19 +1,20 @@
 package main
 
 import (
-	"net/http"
 	"fmt"
+	"net/http"
 )
 
 func main() {
 	fmt.Println("started!")
+
 	storage := &MongoStorage{
-		Uri: MongoUri,
+		Uri:      MongoUri,
 		Database: "hl",
 	}
 	storage.Init()
 
-	Parse(DataFile, storage)
+	Parse(DataFile, storage, false)
 
 	http.Handle("accounts/filter", &AccountsFilterHandler{})
 	http.ListenAndServe("localhost:80", nil)

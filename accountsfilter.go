@@ -22,7 +22,7 @@ var NoLimitError = errors.New("No limit")
 func CreateAccountsQuery(query map[string][]string) (accountsQuery AccountsQuery, err error) {
 	if limit, ok := query["limit"]; ok {
 		if parsed, e := strconv.ParseInt(limit[0], 10, 64); e == nil {
-			if parsed == 0 {
+			if parsed <= 0{
 				err = NoLimitError
 				return
 			}

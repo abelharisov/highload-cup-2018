@@ -10,7 +10,7 @@ func SetupTest(t *testing.T) (teardown func(), storage *MongoStorage) {
 		Database: "hl_test",
 	}
 	storage.Init()
-	Parse(DataFile, storage)
+	Parse(DataFile, storage, true)
 
 	// Test teardown - return a closure for use by 'defer'
 	teardown = func() {

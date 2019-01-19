@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"regexp"
 	"time"
 
+	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
 )
@@ -46,14 +48,25 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 	context, _ := context.WithTimeout(context.Background(), time.Minute)
 
 	filters := make(map[string]interface{})
+	projection := bson.M{
+		"id":    1,
+		"email": 1,
+	}
 	for _, filter := range query.Filters {
+		projection[filter.Field] = 1
 		if filter.Operation == "eq" {
 			filters[filter.Field] = filter.Argument
+		} else if filter.Operation == "domain" {
+			filters[filter.Field] = bson.M{
+				"$regex": regexp.QuoteMeta(filter.Argument),
+			}
 		}
 	}
 	options := options.Find()
-	options.SetSort(struct{ id int32 }{-1})
+	options.SetSort(bson.M{"id": -1})
 	options.SetLimit(query.Limit)
+	options.SetProjection(projection)
+
 	cursor, err := storage.accounts.Find(context, filters, options)
 	if err != nil {
 		panic(err)
@@ -63,6 +76,7 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 	for cursor.Next(context) {
 		account := make(map[string]interface{})
 		cursor.Decode(&account)
+		delete(account, "_id")
 		result = append(result, account)
 	}
 
