@@ -19,5 +19,7 @@ RUN go install -v ./...
 WORKDIR /
 COPY ./entrypoint.sh .
 
+EXPOSE 80 27017
+
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run app" ]

@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -18,8 +17,6 @@ func main() {
 	go func() {
 		sig := <-gracefulStop
 		fmt.Printf("caught sig: %+v", sig)
-		fmt.Println("Wait for 2 second to finish processing")
-		time.Sleep(2 * time.Second)
 		os.Exit(0)
 	}()
 
@@ -29,10 +26,11 @@ func main() {
 	}
 	storage.Init()
 
-	// Parse("/Users/rrabelkharisov/highloadcup/test_accounts_291218/data/data.zip", storage, true)
-	Parse(DataFile, storage, false)
+	err := Parse(DataFile, storage, false)
+	if err != nil {
+		panic(err)
+	}
 
-	http.Handle("/accounts/filter", &AccountsFilterHandler{storage})
-	// http.ListenAndServe(":8000", nil)
+	http.Handle("/accounts/filter/", &AccountsFilterHandler{storage})
 	http.ListenAndServe(":80", nil)
 }
