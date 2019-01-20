@@ -13,7 +13,7 @@ type AccountsFilterHandler struct {
 func (handler *AccountsFilterHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	accountsQuery, err := CreateAccountsQuery(request.URL.Query())
 
-	if err == NoLimitError {
+	if err == NoLimitError || err == BadQueryError {
 		response.WriteHeader(400)
 		return
 	}

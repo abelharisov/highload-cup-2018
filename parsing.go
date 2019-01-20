@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"sort"
+	"time"
 )
 
 type byFileName []*zip.File
@@ -36,12 +37,21 @@ func Parse(dataPath string, storage Storage, onlyOne bool) error {
 		decoder.Token()
 		decoder.Token()
 
-		var account Account
 		accounts := make([]Account, 0, 1000)
 
 		for decoder.More() {
+			var account Account
 			err := decoder.Decode(&account)
 			if err == nil {
+				year := time.Unix(int64(*account.Birth), 0).Year()
+				account.Year = &year
+				if account.Likes != nil {
+					ids := make([]int32, 0, len(*account.Likes))
+					for _, like := range *account.Likes {
+						ids = append(ids, like.Id)
+					}
+					account.LikeIds = &ids
+				}
 				accounts = append(accounts, account)
 			}
 		}

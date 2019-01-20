@@ -14,8 +14,10 @@ func main() {
 	}
 	storage.Init()
 
+	// Parse("/Users/rrabelkharisov/highloadcup/test_accounts_291218/data/data.zip", storage, true)
 	Parse(DataFile, storage, false)
 
-	http.Handle("accounts/filter", &AccountsFilterHandler{})
-	http.ListenAndServe("localhost:80", nil)
+	http.Handle("/accounts/filter", &AccountsFilterHandler{storage})
+	// http.ListenAndServe(":8000", nil)
+	http.ListenAndServe(":80", nil)
 }
