@@ -10,8 +10,6 @@ RUN mkdir -p /data/db
 WORKDIR /go/src/app
 COPY . .
 
-COPY ./test_accounts_291218/data/data.zip /tmp/data/data.zip
-
 RUN govendor install +vendor,^program
 RUN go get -d -t -v ./...
 RUN go install -v ./...
