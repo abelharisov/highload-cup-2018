@@ -149,5 +149,9 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 		result = append(result, account)
 	}
 
+	if result == nil {
+		result = make([]map[string]interface{}, 0)
+	}
+
 	return
 }

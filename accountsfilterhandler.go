@@ -15,12 +15,32 @@ func (handler *AccountsFilterHandler) ServeHTTP(response http.ResponseWriter, re
 
 	if err == NoLimitError || err == BadQueryError {
 		response.WriteHeader(400)
+		response.Write([]byte("{}"))
 		return
 	}
 
-	fmt.Fprint(response, "{\"accounts\":")
-	encoder := json.NewEncoder(response)
+	response.Header().Set("Content-Type", "application/json")
+	response.Header().Set("Connection", "Keep-Alive")
+
 	accounts := handler.storage.Find(&accountsQuery)
-	encoder.Encode(accounts)
-	fmt.Fprint(response, "}")
+	data := struct {
+		Accounts []map[string]interface{} `json:"accounts"`
+	}{
+		accounts,
+	}
+
+	body, err := json.Marshal(data)
+	response.Header().Set("Content-Length", fmt.Sprint(len(body)))
+	response.WriteHeader(200)
+
+	if err != nil {
+		response.WriteHeader(500)
+		return
+	}
+
+	_, err = response.Write(body)
+	if err != nil {
+		response.WriteHeader(500)
+		return
+	}
 }

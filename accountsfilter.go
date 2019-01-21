@@ -68,6 +68,8 @@ func CreateAccountsQuery(query map[string][]string) (accountsQuery AccountsQuery
 		return
 	}
 
+	delete(query, "query_id")
+
 	for filter, arg := range query {
 		_, ok := allowed[filter]
 		if !ok {

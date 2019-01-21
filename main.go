@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
+	start := time.Now()
 	fmt.Println("started!")
 
 	var gracefulStop = make(chan os.Signal)
@@ -16,7 +18,7 @@ func main() {
 	signal.Notify(gracefulStop, syscall.SIGINT)
 	go func() {
 		sig := <-gracefulStop
-		fmt.Printf("caught sig: %+v", sig)
+		fmt.Println("caught sig: %+v", sig)
 		os.Exit(0)
 	}()
 
@@ -26,10 +28,13 @@ func main() {
 	}
 	storage.Init()
 
-	err := Parse(DataFile, storage, false)
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		err := Parse(DataFile, storage, false)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Parsed", time.Now().Sub(start).Seconds())
+	}()
 
 	http.Handle("/accounts/filter/", &AccountsFilterHandler{storage})
 	http.ListenAndServe(":80", nil)
