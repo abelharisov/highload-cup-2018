@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -11,9 +12,11 @@ type AccountsFilterHandler struct {
 }
 
 func (handler *AccountsFilterHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	// log.Println(request.URL.Query())
 	accountsQuery, err := CreateAccountsQuery(request.URL.Query())
 
 	if err == NoLimitError || err == BadQueryError {
+		// log.Println(err)
 		response.WriteHeader(400)
 		response.Write([]byte("{}"))
 		return
@@ -22,7 +25,12 @@ func (handler *AccountsFilterHandler) ServeHTTP(response http.ResponseWriter, re
 	response.Header().Set("Content-Type", "application/json")
 	response.Header().Set("Connection", "Keep-Alive")
 
-	accounts := handler.storage.Find(&accountsQuery)
+	accounts, err := handler.storage.Find(&accountsQuery)
+	if err != nil {
+		log.Println(err)
+		response.WriteHeader(500)
+		return
+	}
 	data := struct {
 		Accounts []map[string]interface{} `json:"accounts"`
 	}{
@@ -34,12 +42,14 @@ func (handler *AccountsFilterHandler) ServeHTTP(response http.ResponseWriter, re
 	response.WriteHeader(200)
 
 	if err != nil {
+		log.Println(err)
 		response.WriteHeader(500)
 		return
 	}
-
+	
 	_, err = response.Write(body)
 	if err != nil {
+		log.Println(err)
 		response.WriteHeader(500)
 		return
 	}

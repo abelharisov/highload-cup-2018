@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,7 +19,7 @@ func main() {
 	signal.Notify(gracefulStop, syscall.SIGINT)
 	go func() {
 		sig := <-gracefulStop
-		fmt.Println("caught sig: %+v", sig)
+		fmt.Println("caught sig: ", sig)
 		os.Exit(0)
 	}()
 
@@ -33,7 +34,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Parsed", time.Now().Sub(start).Seconds())
+		log.Println("Parsed", time.Now().Sub(start).Seconds())
 	}()
 
 	http.Handle("/accounts/filter/", &AccountsFilterHandler{storage})

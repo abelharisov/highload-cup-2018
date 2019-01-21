@@ -15,10 +15,13 @@ import (
 )
 
 type MongoStorage struct {
-	Uri      string
-	Database string
-	client   *mongo.Client
-	accounts *mongo.Collection
+	Uri          string
+	Database     string
+	client       *mongo.Client
+	accounts     *mongo.Collection
+	likeeToLiker *mongo.Collection
+
+	likees LikeeMap
 }
 
 func (storage *MongoStorage) Init() {
@@ -26,20 +29,35 @@ func (storage *MongoStorage) Init() {
 	context, _ := context.WithTimeout(context.Background(), time.Second)
 	storage.client, err = mongo.Connect(context, storage.Uri)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		panic(err)
 	}
 
 	storage.accounts = storage.client.Database(storage.Database).Collection("accounts")
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"sex": 1}})
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"country": 1}})
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"email": 1}})
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"id": 1}})
+
+	// storage.likeeToLiker = storage.client.Database(storage.Database).Collection("likeeToLiker")
+	storage.likees = make(LikeeMap)
 }
 
 func (storage *MongoStorage) LoadAccounts(accounts []Account) {
 	context, _ := context.WithTimeout(context.Background(), time.Minute)
 	documents := make([]interface{}, 0, len(accounts))
+
 	for _, account := range accounts {
 		documents = append(documents, interface{}(account))
+		if account.LikeIds != nil {
+			for _, likee := range *account.LikeIds {
+				storage.likees.AppendLiker(likee, *account.Id)
+			}
+		}
 	}
 	storage.accounts.InsertMany(context, documents)
+
+	// log.Println(storage.likees)
 }
 
 func (storage *MongoStorage) DropDatabase() {
@@ -47,8 +65,8 @@ func (storage *MongoStorage) DropDatabase() {
 	storage.client.Database(storage.Database).Drop(context)
 }
 
-func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]interface{}) {
-	context, _ := context.WithTimeout(context.Background(), time.Minute)
+func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]interface{}, err error) {
+	context := context.Background()
 
 	filters := make(map[string]interface{})
 	projection := bson.M{
@@ -117,15 +135,22 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 		} else if filter.Operation == "contains" && filter.Field == "likes" {
 			values := strings.Split(filter.Argument, ",")
 			ids := make([]int, 0, len(values))
+			possibleTargets := make([]int, 0)
 			for _, value := range values {
-				id, err := strconv.Atoi(value)
-				if err != nil {
-					panic(err)
-				}
+				id, _ := strconv.Atoi(value)
 				ids = append(ids, id)
+
+				targets, ok := storage.likees[id]
+				if ok {
+					possibleTargets = append(possibleTargets, targets.LikerIds...)
+				}
 			}
+			// log.Println(possibleTargets)
 			filters["likeIds"] = bson.M{
 				"$all": ids,
+			}
+			filters["id"] = bson.M{
+				"$in": possibleTargets,
 			}
 		}
 	}
@@ -136,9 +161,10 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 	options.SetLimit(query.Limit)
 	options.SetProjection(projection)
 
-	cursor, err := storage.accounts.Find(context, filters, options)
-	if err != nil {
-		panic(err)
+	cursor, findErr := storage.accounts.Find(context, filters, options)
+	if findErr != nil {
+		err = findErr
+		return
 	}
 	defer cursor.Close(context)
 

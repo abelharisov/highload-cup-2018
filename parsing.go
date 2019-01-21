@@ -31,6 +31,7 @@ func Parse(dataPath string, storage Storage, onlyOne bool) error {
 
 	sort.Sort(byFileName(zipReader.File))
 	for _, f := range zipReader.File {
+		// log.Println("Start parsing file ", f.Name)
 		reader, _ := f.Open()
 		decoder := json.NewDecoder(reader)
 		decoder.Token()
@@ -46,7 +47,7 @@ func Parse(dataPath string, storage Storage, onlyOne bool) error {
 				year := time.Unix(int64(*account.Birth), 0).Year()
 				account.Year = &year
 				if account.Likes != nil {
-					ids := make([]int32, 0, len(*account.Likes))
+					ids := make([]int, 0, len(*account.Likes))
 					for _, like := range *account.Likes {
 						ids = append(ids, like.Id)
 					}
@@ -58,7 +59,9 @@ func Parse(dataPath string, storage Storage, onlyOne bool) error {
 
 		reader.Close()
 
+		// log.Println("Finish parsing file ", f.Name)
 		storage.LoadAccounts(accounts)
+		// log.Println("End loading parsed ", f.Name)
 
 		if onlyOne {
 			break

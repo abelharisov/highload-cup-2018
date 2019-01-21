@@ -16,16 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// type ResponseAccount struct {
-// 	Id     int32
-// 	Email  *string
-// 	Sex    *string
-// 	Status *string
-// 	Fname  *string
-// 	Sname  *string
-// 	Phone *string
-// }
-
 type ResponseAccount Account
 
 type Response struct {
@@ -231,26 +221,26 @@ func TestFilter(t *testing.T) {
 	// 	}
 	// }
 
-	// likesContainsAssert := func(t *testing.T, account ResponseAccount, value string) {
-	// 	values := strings.Split(value, ",")
-	// 	likes := make([]int32, 0)
-	// 	for _, value := range values {
-	// 		i, err := strconv.Atoi(value)
-	// 		assert.NoError(t, err)
-	// 		likes = append(likes, int32(i))
-	// 	}
+	likesContainsAssert := func(t *testing.T, account ResponseAccount, value string) {
+		values := strings.Split(value, ",")
+		likes := make([]int, 0)
+		for _, value := range values {
+			i, err := strconv.Atoi(value)
+			assert.NoError(t, err)
+			likes = append(likes, int(i))
+		}
 
-	// 	for _, like := range likes {
-	// 		found := false
-	// 		for _, actualLike := range *account.Likes {
-	// 			if actualLike.Id == like {
-	// 				found = true
-	// 				break
-	// 			}
-	// 		}
-	// 		assert.True(t, found)
-	// 	}
-	// }
+		for _, like := range likes {
+			found := false
+			for _, actualLike := range *account.Likes {
+				if actualLike.Id == like {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found)
+		}
+	}
 
 	ltAssert := func(field string) func(t *testing.T, account ResponseAccount, value string) {
 		return func(t *testing.T, account ResponseAccount, value string) {
@@ -270,7 +260,7 @@ func TestFilter(t *testing.T) {
 			assert.NoError(t, err)
 			valueInt, err := strconv.Atoi(value)
 			assert.NoError(t, err)
-			assert.True(t, *(actualValue.(*int32)) < int32(valueInt))
+			assert.True(t, *(actualValue.(*int)) < int(valueInt))
 		}
 	}
 
@@ -280,7 +270,7 @@ func TestFilter(t *testing.T) {
 			assert.NoError(t, err)
 			valueInt, err := strconv.Atoi(value)
 			assert.NoError(t, err)
-			assert.True(t, *(actualValue.(*int32)) > int32(valueInt))
+			assert.True(t, *(actualValue.(*int)) > int(valueInt))
 		}
 	}
 
@@ -360,7 +350,7 @@ func TestFilter(t *testing.T) {
 		{"birth_year", "1995", birthYearAssert},
 		// {"interests_any", "Апельсиновый сок,Матрица,YouTube", interestsAnyAssert},
 		// {"interests_contains", "Апельсиновый сок,Матрица,YouTube", interestsContainsAssert},
-		// {"likes_contains", "28499,2005", likesContainsAssert},
+		{"likes_contains", "28499,2005", likesContainsAssert},
 		{"premium_now", "1", premiumAssert},
 		{"premium_null", "0", nullAssert("Premium")},
 		{"premium_null", "1", nullAssert("Premium")},

@@ -1,8 +1,5 @@
 #!/bin/sh
 
-touch /var/log/mongo.log
-tail -f /var/log/mongo.log &
-
-mongod --fork --logpath /var/log/mongo.log
+mongod > /dev/null &
 
 eval "go $1"
