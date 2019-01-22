@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,36 +16,46 @@ import (
 )
 
 type MongoStorage struct {
-	Uri          string
-	Database     string
-	client       *mongo.Client
-	accounts     *mongo.Collection
-	likeeToLiker *mongo.Collection
+	Uri      string
+	Database string
+	client   *mongo.Client
+	accounts *mongo.Collection
 
 	likees LikeeMap
 }
 
 func (storage *MongoStorage) Init() {
+	context := context.Background()
+
 	var err error
-	context, _ := context.WithTimeout(context.Background(), time.Second)
 	storage.client, err = mongo.Connect(context, storage.Uri)
 	if err != nil {
 		log.Println(err)
 		panic(err)
 	}
 
+	storage.likees = make(LikeeMap)
+
 	storage.accounts = storage.client.Database(storage.Database).Collection("accounts")
+	storage.CreateIndexes()
+}
+
+func (storage *MongoStorage) CreateIndexes() {
+	context := context.Background()
+
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"sex": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"country": 1}})
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"city": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"email": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"id": 1}})
+}
 
-	// storage.likeeToLiker = storage.client.Database(storage.Database).Collection("likeeToLiker")
-	storage.likees = make(LikeeMap)
+func (storage *MongoStorage) DropIndexes() {
+	log.Println("Todo")
 }
 
 func (storage *MongoStorage) LoadAccounts(accounts []Account) {
-	context, _ := context.WithTimeout(context.Background(), time.Minute)
+	context := context.Background()
 	documents := make([]interface{}, 0, len(accounts))
 
 	for _, account := range accounts {
@@ -56,12 +67,10 @@ func (storage *MongoStorage) LoadAccounts(accounts []Account) {
 		}
 	}
 	storage.accounts.InsertMany(context, documents)
-
-	// log.Println(storage.likees)
 }
 
 func (storage *MongoStorage) DropDatabase() {
-	context, _ := context.WithTimeout(context.Background(), time.Minute)
+	context := context.Background()
 	storage.client.Database(storage.Database).Drop(context)
 }
 
@@ -118,7 +127,7 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 			if err != nil {
 				panic(err)
 			}
-			filters["year"] = intArg
+			filters["birthYear"] = intArg
 		} else if filter.Operation == "now" && filter.Field == "premium" {
 			now := time.Now().Unix()
 			filters["premium.start"] = bson.M{
@@ -134,23 +143,21 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 			}
 		} else if filter.Operation == "contains" && filter.Field == "likes" {
 			values := strings.Split(filter.Argument, ",")
-			ids := make([]int, 0, len(values))
-			possibleTargets := make([]int, 0)
+			likees := make([]int, 0, len(values))
+			likers := make([]int, 0)
 			for _, value := range values {
 				id, _ := strconv.Atoi(value)
-				ids = append(ids, id)
+				likees = append(likees, id)
 
-				targets, ok := storage.likees[id]
-				if ok {
-					possibleTargets = append(possibleTargets, targets.LikerIds...)
+				if cachedLikers, ok := storage.likees[id]; ok {
+					likers = append(likers, cachedLikers...)
 				}
 			}
-			// log.Println(possibleTargets)
 			filters["likeIds"] = bson.M{
-				"$all": ids,
+				"$all": likees,
 			}
 			filters["id"] = bson.M{
-				"$in": possibleTargets,
+				"$in": likers,
 			}
 		}
 	}
@@ -173,6 +180,125 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 		cursor.Decode(&account)
 		delete(account, "_id")
 		result = append(result, account)
+	}
+
+	if result == nil {
+		result = make([]map[string]interface{}, 0)
+	}
+
+	return
+}
+
+func (storage *MongoStorage) Group(query *AccountsGroupQuery) (result []map[string]interface{}, err error) {
+	context := context.Background()
+
+	match := bson.M{}
+	for field, value := range query.Filters {
+		switch field {
+		case "birth", "joined":
+			year, convErr := strconv.Atoi(value)
+			if convErr != nil {
+				err = convErr
+				return
+			}
+			match[fmt.Sprint(field, "Year")] = year
+		case "likes":
+			likeeId, convErr := strconv.Atoi(value)
+			if convErr != nil {
+				err = convErr
+				return
+			}
+			if likers, ok := storage.likees[likeeId]; ok {
+				match["id"] = bson.M{
+					"$in": likers,
+				}
+			}
+			match["likeIds"] = likeeId
+		default:
+			match[field] = value
+		}
+	}
+
+	groupBy := bson.M{}
+	sortStage := bson.D{
+		{"count", query.Order},
+	}
+	for _, field := range query.Keys {
+		groupBy[field] = fmt.Sprint("$", field)
+	}
+
+	sort.Strings(query.Keys)
+	// keys := make([]string, 0)
+	// if query.Order == -1 {
+	// 	for i := len(query.Keys) - 1; i >= 0; i-- {
+	// 		keys = append(keys, query.Keys[i])
+	// 	}
+	// } else {
+	// 	keys = query.Keys
+	// }
+
+	var unwindInterests = false
+	for _, field := range query.Keys /*keys*/{
+		sortStage = append(
+			sortStage,
+			bson.E{
+				fmt.Sprint("_id.", field),
+				query.Order,
+			},
+		)
+
+		if field == "interests" {
+			unwindInterests = true
+		}
+	}
+
+	pipeline := bson.A{
+		bson.M{
+			"$match": match,
+		},
+	}
+
+	if unwindInterests {
+		pipeline = append(
+			pipeline,
+			bson.M{
+				"$unwind": "$interests",
+			},
+		)
+	}
+
+	pipeline = append(
+		pipeline,
+		bson.A{
+			bson.M{
+				"$group": bson.M{
+					"_id": groupBy,
+					"count": bson.M{
+						"$sum": 1,
+					},
+				},
+			},
+			bson.M{
+				"$sort": sortStage,
+			},
+			bson.M{
+				"$limit": query.Limit,
+			},
+		}...,
+	)
+
+	cursor, findErr := storage.accounts.Aggregate(context, pipeline)
+
+	if findErr != nil {
+		err = findErr
+		return
+	}
+	defer cursor.Close(context)
+
+	for cursor.Next(context) {
+		data := make(map[string]interface{})
+		cursor.Decode(&data)
+		result = append(result, data)
 	}
 
 	if result == nil {

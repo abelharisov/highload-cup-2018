@@ -44,8 +44,10 @@ func Parse(dataPath string, storage Storage, onlyOne bool) error {
 			var account Account
 			err := decoder.Decode(&account)
 			if err == nil {
-				year := time.Unix(int64(*account.Birth), 0).Year()
-				account.Year = &year
+				birthYear := time.Unix(int64(*account.Birth), 0).Year()
+				account.BirthYear = &birthYear
+				joinedYear := time.Unix(int64(*account.Joined), 0).Year()
+				account.JoinedYear = &joinedYear
 				if account.Likes != nil {
 					ids := make([]int, 0, len(*account.Likes))
 					for _, like := range *account.Likes {

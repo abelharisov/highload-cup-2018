@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,14 +11,14 @@ import (
 
 func main() {
 	start := time.Now()
-	fmt.Println("started!")
+	log.Println("started!")
 
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
 	signal.Notify(gracefulStop, syscall.SIGINT)
 	go func() {
 		sig := <-gracefulStop
-		fmt.Println("caught sig: ", sig)
+		log.Println("caught sig: ", sig)
 		os.Exit(0)
 	}()
 
@@ -38,5 +37,6 @@ func main() {
 	}()
 
 	http.Handle("/accounts/filter/", &AccountsFilterHandler{storage})
+	http.Handle("/accounts/group/", &AccountsGroupHandler{storage})
 	http.ListenAndServe(":80", nil)
 }
