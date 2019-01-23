@@ -37,7 +37,7 @@ type AccountsGroupQuery struct {
 	Order   int
 }
 
-func CreateAccountsGroupQuery(query map[string][]string) (accountsGroupQuery AccountsGroupQuery, err error) {
+func CreateAccountsGroupQuery(query map[string]string) (accountsGroupQuery AccountsGroupQuery, err error) {
 	delete(query, "query_id")
 
 	limit, ok := query["limit"]
@@ -45,7 +45,7 @@ func CreateAccountsGroupQuery(query map[string][]string) (accountsGroupQuery Acc
 		err = NoLimitError
 		return
 	}
-	accountsGroupQuery.Limit, err = strconv.Atoi(limit[0])
+	accountsGroupQuery.Limit, err = strconv.Atoi(limit)
 	if err != nil {
 		err = NoLimitError
 		return
@@ -57,7 +57,7 @@ func CreateAccountsGroupQuery(query map[string][]string) (accountsGroupQuery Acc
 		err = BadQueryError
 		return
 	}
-	accountsGroupQuery.Order, err = strconv.Atoi(order[0])
+	accountsGroupQuery.Order, err = strconv.Atoi(order)
 	if err != nil {
 		err = BadQueryError
 		return
@@ -69,7 +69,7 @@ func CreateAccountsGroupQuery(query map[string][]string) (accountsGroupQuery Acc
 		err = BadQueryError
 		return
 	}
-	accountsGroupQuery.Keys = strings.Split(keys[0], ",")
+	accountsGroupQuery.Keys = strings.Split(keys, ",")
 	for _, key := range accountsGroupQuery.Keys {
 		if _, ok := validKeys[key]; !ok {
 			err = BadQueryError
@@ -84,7 +84,7 @@ func CreateAccountsGroupQuery(query map[string][]string) (accountsGroupQuery Acc
 			err = BadQueryError
 			return
 		}
-		accountsGroupQuery.Filters[field] = values[0]
+		accountsGroupQuery.Filters[field] = values
 	}
 
 	return

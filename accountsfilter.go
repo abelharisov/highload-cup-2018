@@ -50,9 +50,9 @@ var allowed = map[string]int{
 	"premium_null":       1,
 }
 
-func CreateAccountsQuery(query map[string][]string) (accountsQuery AccountsQuery, err error) {
+func CreateAccountsQuery(query map[string]string) (accountsQuery AccountsQuery, err error) {
 	if limit, ok := query["limit"]; ok {
-		if parsed, e := strconv.ParseInt(limit[0], 10, 64); e == nil {
+		if parsed, e := strconv.ParseInt(limit, 10, 64); e == nil {
 			if parsed <= 0 {
 				err = NoLimitError
 				return
@@ -82,7 +82,7 @@ func CreateAccountsQuery(query map[string][]string) (accountsQuery AccountsQuery
 			AccountFilter{
 				splitted[0],
 				splitted[1],
-				arg[0],
+				arg,
 			})
 	}
 	return

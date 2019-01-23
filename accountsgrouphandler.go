@@ -4,31 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
+
+	routing "github.com/qiangxue/fasthttp-routing"
 )
 
 type AccountsGroupHandler struct {
 	storage Storage
 }
 
-func (handler *AccountsGroupHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+func (handler *AccountsGroupHandler) ServeHTTP(c *routing.Context) {
 	// log.Println(request.URL.Query())
-	query, err := CreateAccountsGroupQuery(request.URL.Query())
+	query, err := CreateAccountsGroupQuery(ArgsToMap(c.URI().QueryArgs()))
 
 	if err == NoLimitError || err == BadQueryError {
 		// log.Println(err)
-		response.WriteHeader(400)
-		response.Write([]byte("{}"))
+		c.SetStatusCode(400)
+		c.Write([]byte("{}"))
 		return
 	}
 
-	response.Header().Set("Content-Type", "application/json")
-	response.Header().Set("Connection", "Keep-Alive")
+	c.SetContentType("application/json")
+	c.Response.Header.Set("Connection", "Keep-Alive")
 
 	data, err := handler.storage.Group(&query)
 	if err != nil {
 		log.Println(err)
-		response.WriteHeader(500)
+		c.SetStatusCode(500)
 		return
 	}
 
@@ -50,19 +51,19 @@ func (handler *AccountsGroupHandler) ServeHTTP(response http.ResponseWriter, req
 	}
 
 	body, err := json.Marshal(formattedResponse)
-	response.Header().Set("Content-Length", fmt.Sprint(len(body)))
-	response.WriteHeader(200)
+	c.Response.Header.Set("Content-Length", fmt.Sprint(len(body)))
+	c.SetStatusCode(200)
 
 	if err != nil {
 		log.Println(err)
-		response.WriteHeader(500)
+		c.SetStatusCode(500)
 		return
 	}
 
-	_, err = response.Write(body)
+	_, err = c.Write(body)
 	if err != nil {
 		log.Println(err)
-		response.WriteHeader(500)
+		c.SetStatusCode(500)
 		return
 	}
 }

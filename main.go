@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	routing "github.com/qiangxue/fasthttp-routing"
+	"github.com/valyala/fasthttp"
 )
 
 func main() {
@@ -36,7 +38,18 @@ func main() {
 		log.Println("Parsed", time.Now().Sub(start).Seconds())
 	}()
 
-	http.Handle("/accounts/filter/", &AccountsFilterHandler{storage})
-	http.Handle("/accounts/group/", &AccountsGroupHandler{storage})
-	http.ListenAndServe(":80", nil)
+	router := routing.New()
+
+	afh := &AccountsFilterHandler{storage}
+	router.Get("/accounts/filter/", func(c *routing.Context) error {
+		afh.ServeHTTP(c)
+		return nil
+	})
+	agh := &AccountsGroupHandler{storage}
+	router.Get("/accounts/group/", func(c *routing.Context) error {
+		agh.ServeHTTP(c)
+		return nil
+	})
+
+	fasthttp.ListenAndServe(":80", router.HandleRequest)
 }

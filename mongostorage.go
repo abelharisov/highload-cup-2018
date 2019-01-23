@@ -48,6 +48,15 @@ func (storage *MongoStorage) CreateIndexes() {
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"city": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"email": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"id": 1}})
+	// storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{
+	// 	Keys: bson.D{
+	// 		{"sex", 1},
+	// 		{"country", 1},
+	// 		{"city", 1},
+	// 		{"status", 1},
+	// 		{"email", 1},
+	// 	},
+	// })
 }
 
 func (storage *MongoStorage) DropIndexes() {
@@ -238,7 +247,7 @@ func (storage *MongoStorage) Group(query *AccountsGroupQuery) (result []map[stri
 	// }
 
 	var unwindInterests = false
-	for _, field := range query.Keys /*keys*/{
+	for _, field := range query.Keys /*keys*/ {
 		sortStage = append(
 			sortStage,
 			bson.E{
