@@ -241,6 +241,12 @@
 			"revisionTime": "2019-01-09T08:30:14Z"
 		},
 		{
+			"checksumSHA1": "QuguYGLN5qg/1jiPQfdpd1Gvjm8=",
+			"path": "github.com/thoas/go-funk",
+			"revision": "fbae87fb5b5cdb35c9682d11c420061cf41268a9",
+			"revisionTime": "2018-10-20T16:45:46Z"
+		},
+		{
 			"checksumSHA1": "ua2PK6PDbNCyzxOmakS3BJoF8Co=",
 			"path": "github.com/valyala/bytebufferpool",
 			"revision": "cdfbe9377474227bb42120c1e22fd4433e7f69bf",

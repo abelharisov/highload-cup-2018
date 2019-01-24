@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
@@ -21,7 +23,8 @@ type MongoStorage struct {
 	client   *mongo.Client
 	accounts *mongo.Collection
 
-	likees LikeeMap
+	likees    LikeeMap
+	interests InterestsMap
 }
 
 func (storage *MongoStorage) Init() {
@@ -35,6 +38,7 @@ func (storage *MongoStorage) Init() {
 	}
 
 	storage.likees = make(LikeeMap)
+	storage.interests = make(InterestsMap)
 
 	storage.accounts = storage.client.Database(storage.Database).Collection("accounts")
 	storage.CreateIndexes()
@@ -44,6 +48,7 @@ func (storage *MongoStorage) CreateIndexes() {
 	context := context.Background()
 
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"sex": 1}})
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"birthYear": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"country": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"city": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"email": 1}})
@@ -74,6 +79,9 @@ func (storage *MongoStorage) LoadAccounts(accounts []Account) {
 				storage.likees.AppendLiker(likee, *account.Id)
 			}
 		}
+		if account.Interests != nil {
+			storage.interests.Append(*account.Id, *account.Interests)
+		}
 	}
 	storage.accounts.InsertMany(context, documents)
 }
@@ -91,6 +99,7 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 		"id":    1,
 		"email": 1,
 	}
+	var preIds *[]int
 	for _, filter := range query.Filters {
 		projection[filter.Field] = 1
 		if filter.Operation == "eq" {
@@ -112,6 +121,10 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 			filters[filter.Field] = bson.M{
 				"$in": values,
 			}
+			// if filter.Field == "interests" {
+			// 	iii := storage.interests.AccountsWithInterestsAny(values)
+			// 	log.Println("aaaaa ", len(iii))
+			// }
 		} else if filter.Operation == "lt" || filter.Operation == "gt" {
 			intArg, err := strconv.Atoi(filter.Argument)
 			if err == nil {
@@ -147,27 +160,41 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 			}
 		} else if filter.Operation == "contains" && filter.Field == "interests" {
 			values := strings.Split(filter.Argument, ",")
-			filters[filter.Field] = bson.M{
-				"$all": values,
+			ids := storage.interests.AccountsWithInterestsContains(values)
+			if preIds == nil {
+				preIds = &ids
+			} else {
+				intersect := funk.Intersect(*preIds, ids).([]int)
+				preIds = &intersect
 			}
 		} else if filter.Operation == "contains" && filter.Field == "likes" {
 			values := strings.Split(filter.Argument, ",")
-			likees := make([]int, 0, len(values))
-			likers := make([]int, 0)
+			intValues := make([]int, 0, len(values))
 			for _, value := range values {
-				id, _ := strconv.Atoi(value)
-				likees = append(likees, id)
-
-				if cachedLikers, ok := storage.likees[id]; ok {
-					likers = append(likers, cachedLikers...)
+				if i, err := strconv.Atoi(value); err == nil {
+					intValues = append(intValues, i)
+				} else {
+					panic(err)
 				}
 			}
-			filters["likeIds"] = bson.M{
-				"$all": likees,
+			ids := storage.likees.AccountsWithLikesContains(intValues)
+			if preIds == nil {
+				preIds = &ids
+			} else {
+				intersect := funk.Intersect(*preIds, ids).([]int)
+				preIds = &intersect
 			}
-			filters["id"] = bson.M{
-				"$in": likers,
-			}
+		}
+	}
+
+	if preIds != nil {
+		if len(*preIds) == 0 {
+			result = make([]map[string]interface{}, 0)
+			return
+		}
+
+		filters["id"] = bson.M{
+			"$in": preIds,
 		}
 	}
 	delete(projection, "likes")
