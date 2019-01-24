@@ -6,7 +6,7 @@ import (
 
 // Account ...
 type Account struct {
-	Id         *int      `bson:"id" json:"id"`
+	Id         int      `bson:"id" json:"id"`
 	FName      *string   `bson:"fname,omitempty" json:"fname"`
 	SName      *string   `bson:"sname,omitempty" json:"sname"`
 	Phone      *string   `bson:"phone,omitempty" json:"phone"`
@@ -19,20 +19,31 @@ type Account struct {
 	Joined     *int      `bson:"joined,omitempty" json:"joined"`
 	JoinedYear *int      `bson:"joinedYear,omitempty" json:"-"`
 	Interests  *[]string `bson:"interests,omitempty" json:"interests"`
-	Status     *string   `bson:"status,omitempty" json:"status"`
+	Status     string    `bson:"status,omitempty" json:"status"`
 	Premium    *struct {
-		Start  int `bson:"start,omitempty" json:"start"`
-		Finish int `bson:"finish,omitempty" json:"finish"`
+		Start  int64 `bson:"start,omitempty" json:"start"`
+		Finish int64 `bson:"finish,omitempty" json:"finish"`
 	} `bson:"premium,omitempty" json:"premium"`
 	Likes *[]struct {
 		Id int `bson:"id,omitempty" json:"id"`
 		Ts int `bson:"ts,omitempty" json:"ts"`
 	} `bson:"likes,omitempty" json:"likes"`
-	LikeIds *[]int `bson:"likeIds,omitempty" json:"-"` // custom
+	LikeIds       *[]int `bson:"likeIds,omitempty" json:"-"`  // custom
+	StatusId      int    `bson:"statusId,omitempty" json:"-"` // custom
+	PremiumStatus int    `bson:"premiumStatus" json:"-"`      // custom
+	PhoneCode     int    `bson:"phoneCode" json:"-"`          // custom
 }
 
 // type Likers []int
 type LikeeMap map[int][]int
+
+const PremiumNull = 1
+const PremiumNotActive = 2
+const PremiumActive = 3
+
+const StatusFree = 3
+const StatusWtf = 2
+const StatusBusy = 1
 
 func (m *LikeeMap) AppendLiker(likeeId int, likerId int) {
 	if _, ok := (*m)[likeeId]; !ok {

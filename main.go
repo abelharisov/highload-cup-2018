@@ -31,7 +31,7 @@ func main() {
 	storage.Init()
 
 	go func() {
-		err := Parse(DataFile, storage, false)
+		err := Parse(DataFile, OptionsFile, storage, false)
 		if err != nil {
 			panic(err)
 		}
@@ -48,6 +48,11 @@ func main() {
 	agh := &AccountsGroupHandler{storage}
 	router.Get("/accounts/group/", func(c *routing.Context) error {
 		agh.ServeHTTP(c)
+		return nil
+	})
+	arh := &AccountsRecommendHandler{storage}
+	router.Get("/accounts/<id>/recommend/", func(c *routing.Context) error {
+		arh.ServeHTTP(c)
 		return nil
 	})
 

@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/thoas/go-funk"
 
@@ -25,6 +25,14 @@ type MongoStorage struct {
 
 	likees    LikeeMap
 	interests InterestsMap
+
+	interestDict Dict
+	countryDict  Dict
+	cityDict     Dict
+
+	recIndex AccountRecIndex
+
+	now int
 }
 
 func (storage *MongoStorage) Init() {
@@ -39,6 +47,22 @@ func (storage *MongoStorage) Init() {
 
 	storage.likees = make(LikeeMap)
 	storage.interests = make(InterestsMap)
+
+	storage.interestDict = Dict{}
+	storage.interestDict.Init()
+
+	storage.countryDict = Dict{}
+	storage.countryDict.Init()
+
+	storage.cityDict = Dict{}
+	storage.cityDict.Init()
+
+	storage.recIndex = AccountRecIndex{
+		InterestDict: &storage.interestDict,
+		CountryDict:  &storage.countryDict,
+		CityDict:     &storage.cityDict,
+	}
+	storage.recIndex.Init()
 
 	storage.accounts = storage.client.Database(storage.Database).Collection("accounts")
 	storage.CreateIndexes()
@@ -76,12 +100,13 @@ func (storage *MongoStorage) LoadAccounts(accounts []Account) {
 		documents = append(documents, interface{}(account))
 		if account.LikeIds != nil {
 			for _, likee := range *account.LikeIds {
-				storage.likees.AppendLiker(likee, *account.Id)
+				storage.likees.AppendLiker(likee, account.Id)
 			}
 		}
 		if account.Interests != nil {
-			storage.interests.Append(*account.Id, *account.Interests)
+			storage.interests.Append(account.Id, *account.Interests)
 		}
+		storage.recIndex.Add(account)
 	}
 	storage.accounts.InsertMany(context, documents)
 }
@@ -91,6 +116,10 @@ func (storage *MongoStorage) DropDatabase() {
 	storage.client.Database(storage.Database).Drop(context)
 }
 
+func (s *MongoStorage) SetNow(now int) {
+	s.now = now
+}
+
 func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]interface{}, err error) {
 	context := context.Background()
 
@@ -98,11 +127,21 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 	projection := bson.M{
 		"id":    1,
 		"email": 1,
+		// "statusId": 1,
+		// "phoneCode": 1,
 	}
 	var preIds *[]int
 	for _, filter := range query.Filters {
 		projection[filter.Field] = 1
-		if filter.Operation == "eq" {
+		if filter.Field == "status" {
+			if filter.Operation == "eq" {
+				filters["statusId"] = ParseStatus(filter.Argument)
+			} else {
+				filters["statusId"] = bson.M{
+					"$ne": ParseStatus(filter.Argument),
+				}
+			}
+		} else if filter.Operation == "eq" {
 			filters[filter.Field] = filter.Argument
 		} else if filter.Operation == "neq" {
 			filters[filter.Field] = bson.M{
@@ -113,8 +152,19 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 				"$regex": fmt.Sprint(regexp.QuoteMeta(filter.Argument), "$"),
 			}
 		} else if filter.Operation == "null" {
-			filters[filter.Field] = bson.M{
-				"$exists": filter.Argument == "0",
+			if filter.Field == "premium" {
+				if filter.Argument == "0" {
+					filters["premiumStatus"] = bson.M{
+						"$ne": PremiumNull,
+					}
+				} else {
+					filters["premiumStatus"] = PremiumNull
+				}
+
+			} else {
+				filters[filter.Field] = bson.M{
+					"$exists": filter.Argument == "0",
+				}
 			}
 		} else if filter.Operation == "any" {
 			values := strings.Split(filter.Argument, ",")
@@ -141,8 +191,10 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 				"$regex": fmt.Sprint("^", regexp.QuoteMeta(filter.Argument)),
 			}
 		} else if filter.Operation == "code" {
-			filters[filter.Field] = bson.M{
-				"$regex": regexp.QuoteMeta(fmt.Sprint("(", filter.Argument, ")")),
+			if code, err := strconv.Atoi(filter.Argument); err == nil {
+				filters["phoneCode"] = code
+			} else {
+				log.Println(err)
 			}
 		} else if filter.Operation == "year" && filter.Field == "birth" {
 			intArg, err := strconv.Atoi(filter.Argument)
@@ -150,14 +202,8 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 				panic(err)
 			}
 			filters["birthYear"] = intArg
-		} else if filter.Operation == "now" && filter.Field == "premium" {
-			now := time.Now().Unix()
-			filters["premium.start"] = bson.M{
-				"$lte": now,
-			}
-			filters["premium.finish"] = bson.M{
-				"$gte": now,
-			}
+		} else if filter.Operation == "now" {
+			filters["premiumStatus"] = PremiumActive
 		} else if filter.Operation == "contains" && filter.Field == "interests" {
 			values := strings.Split(filter.Argument, ",")
 			ids := storage.interests.AccountsWithInterestsContains(values)
@@ -339,6 +385,64 @@ func (storage *MongoStorage) Group(query *AccountsGroupQuery) (result []map[stri
 
 	if result == nil {
 		result = make([]map[string]interface{}, 0)
+	}
+
+	return
+}
+
+func (storage *MongoStorage) Recommend(q *AccountsRecommendQuery) (result []map[string]interface{}, err error) {
+	// log.Println(*q)
+	res := storage.accounts.FindOne(context.Background(), bson.M{"id": q.Id})
+	if res == nil || res.Err() != nil {
+		log.Println(res.Err())
+		err = errors.New("Recommend: account not found")
+		return
+	}
+
+	var account Account
+	if err = res.Decode(&account); err != nil {
+		return
+	}
+
+	ids := storage.recIndex.Recommend(account, q.Country, q.City, q.Limit)
+
+	options := options.Find()
+	options.SetProjection(bson.M{
+		"sname":   1,
+		"id":      1,
+		"fname":   1,
+		"birth":   1,
+		"email":   1,
+		"status":  1,
+		"premium": 1,
+	})
+
+	filter := bson.M{
+		"id": bson.M{
+			"$in": ids,
+		},
+	}
+
+	notOrderedResult := map[int64](map[string]interface{}){}
+
+	if cursor, findEerr := storage.accounts.Find(context.Background(), filter, options); findEerr == nil {
+		defer cursor.Close(context.Background())
+
+		for cursor.Next(context.Background()) {
+			data := make(map[string]interface{})
+			cursor.Decode(&data)
+			delete(data, "_id")
+			notOrderedResult[data["id"].(int64)] = data
+		}
+	} else {
+		err = findEerr
+		return
+	}
+
+	result = make([]map[string]interface{}, 0, len(ids))
+
+	for _, id := range ids {
+		result = append(result, notOrderedResult[int64(id)])
 	}
 
 	return

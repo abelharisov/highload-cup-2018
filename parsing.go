@@ -2,8 +2,13 @@ package main
 
 import (
 	"archive/zip"
+	"bufio"
 	"encoding/json"
+	"log"
+	"os"
+	"regexp"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -22,7 +27,24 @@ func (files byFileName) Less(i, j int) bool {
 }
 
 // Parse files in dataPath and put to Storage
-func Parse(dataPath string, storage Storage, onlyOne bool) error {
+func Parse(dataPath string, optionsPath string, storage Storage, onlyOne bool) error {
+	optionsFile, err := os.Open(optionsPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer optionsFile.Close()
+
+	optionsReader := bufio.NewReader(optionsFile)
+	timeNow, err := optionsReader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	timeNow = timeNow[0:len(timeNow) - 1]
+	now, err := strconv.Atoi(timeNow)
+	if err != nil {
+		return err
+	}
+
 	zipReader, err := zip.OpenReader(dataPath)
 	if err != nil {
 		return err
@@ -55,6 +77,25 @@ func Parse(dataPath string, storage Storage, onlyOne bool) error {
 					}
 					account.LikeIds = &ids
 				}
+				if account.Premium == nil {
+					account.PremiumStatus = PremiumNull
+				} else {
+					if account.Premium.Start < int64(now) && int64(now) < account.Premium.Finish {
+						account.PremiumStatus = PremiumActive
+					} else {
+						account.PremiumStatus = PremiumNotActive
+					}
+				}
+				if account.Phone != nil {
+					r := regexp.MustCompile(`\((?P<Code>\d.+)\)`)
+					matches := r.FindStringSubmatch(*account.Phone)
+					codeStr := matches[1]
+					if code, err := strconv.Atoi(codeStr); err == nil {
+						account.PhoneCode = code
+					}
+					// log.Println(*account.Phone, codeStr, account.PhoneCode)
+				}
+				account.StatusId = ParseStatus(account.Status)
 				accounts = append(accounts, account)
 			}
 		}
@@ -71,4 +112,16 @@ func Parse(dataPath string, storage Storage, onlyOne bool) error {
 	}
 
 	return nil
+}
+
+func ParseStatus(status string) int {
+	char := []rune(status)[0]
+	switch char {
+	case 'с':
+		return StatusFree
+	case 'з':
+		return StatusBusy
+	default:
+		return StatusWtf
+	}
 }
