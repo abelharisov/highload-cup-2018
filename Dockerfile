@@ -12,7 +12,7 @@ COPY . .
 
 RUN govendor install +vendor,^program
 # RUN go get -d -t -v ./...
-# RUN go install -v ./...
+RUN go install -v
 
 WORKDIR /
 COPY ./entrypoint.sh .

@@ -7,5 +7,5 @@ type Storage interface {
 	LoadAccounts(accounts []Account)
 	Find(query *AccountsQuery) ([]map[string]interface{}, error)
 	Group(query *AccountsGroupQuery) ([]map[string]interface{}, error)
-	SetNow(now int)
+	Recommend(q *AccountsRecommendQuery) ([]map[string]interface{}, error)
 }

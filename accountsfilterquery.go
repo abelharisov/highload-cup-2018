@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -16,9 +16,6 @@ type AccountsQuery struct {
 	Limit   int64
 	Filters []AccountFilter
 }
-
-var NoLimitError = errors.New("No limit")
-var BadQueryError = errors.New("Bad query")
 
 var allowed = map[string]int{
 	"email_domain":       1,
@@ -54,26 +51,25 @@ func CreateAccountsQuery(query map[string]string) (accountsQuery AccountsQuery, 
 	if limit, ok := query["limit"]; ok {
 		if parsed, e := strconv.ParseInt(limit, 10, 64); e == nil {
 			if parsed <= 0 {
-				err = NoLimitError
+				err = &Error{400, "limit < 0"}
 				return
 			}
 			accountsQuery.Limit = parsed
 			delete(query, "limit")
 		} else {
-			err = NoLimitError
+			err = &Error{400, "limit not number"}
 			return
 		}
 	} else {
-		err = NoLimitError
+		err = &Error{400, "no limit"}
 		return
 	}
 
 	delete(query, "query_id")
 
 	for filter, arg := range query {
-		_, ok := allowed[filter]
-		if !ok {
-			err = BadQueryError
+		if _, ok := allowed[filter]; !ok {
+			err = &Error{400, fmt.Sprint("Bad field: ", filter)}
 			return
 		}
 		splitted := strings.Split(filter, "_")
@@ -85,5 +81,6 @@ func CreateAccountsQuery(query map[string]string) (accountsQuery AccountsQuery, 
 				arg,
 			})
 	}
+
 	return
 }

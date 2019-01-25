@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -42,37 +43,37 @@ func CreateAccountsGroupQuery(query map[string]string) (accountsGroupQuery Accou
 
 	limit, ok := query["limit"]
 	if !ok {
-		err = NoLimitError
+		err = &Error{400, "no limit"}
 		return
 	}
 	accountsGroupQuery.Limit, err = strconv.Atoi(limit)
-	if err != nil {
-		err = NoLimitError
+	if err != nil || accountsGroupQuery.Limit < 0 {
+		err = &Error{400, fmt.Sprint("Bad limit", limit)}
 		return
 	}
 	delete(query, "limit")
 
 	order, ok := query["order"]
 	if !ok {
-		err = BadQueryError
+		err = &Error{400, "No order"}
 		return
 	}
 	accountsGroupQuery.Order, err = strconv.Atoi(order)
 	if err != nil {
-		err = BadQueryError
+		err = &Error{400, fmt.Sprint("Bad order", order)}
 		return
 	}
 	delete(query, "order")
 
 	keys, ok := query["keys"]
 	if !ok {
-		err = BadQueryError
+		err = &Error{400, "No keys"}
 		return
 	}
 	accountsGroupQuery.Keys = strings.Split(keys, ",")
 	for _, key := range accountsGroupQuery.Keys {
 		if _, ok := validKeys[key]; !ok {
-			err = BadQueryError
+			err = &Error{400, fmt.Sprint("Bad key", key)}
 			return
 		}
 	}
@@ -81,7 +82,7 @@ func CreateAccountsGroupQuery(query map[string]string) (accountsGroupQuery Accou
 	accountsGroupQuery.Filters = make(map[string]string)
 	for field, values := range query {
 		if _, ok := allowedFilters[field]; !ok {
-			err = BadQueryError
+			err = &Error{400, fmt.Sprint("Bad filter", field)}
 			return
 		}
 		accountsGroupQuery.Filters[field] = values

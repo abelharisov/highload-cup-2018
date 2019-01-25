@@ -7,9 +7,31 @@ import (
 	"syscall"
 	"time"
 
-	routing "github.com/qiangxue/fasthttp-routing"
+	"github.com/qiangxue/fasthttp-routing"
 	"github.com/valyala/fasthttp"
 )
+
+func handle(handler Handler, c *routing.Context) {
+	c.SetContentType("application/json")
+	c.Response.Header.Set("Connection", "Keep-Alive")
+
+	err := handler.ServeHTTP(c)
+
+	if err != nil {
+		code := err.(*Error).Code
+		c.SetStatusCode(code)
+
+		if code == 400 || code == 404 {
+			c.WriteString("{}")
+		}
+
+		if code == 500 {
+			log.Println(err.Error())
+		}
+	} else {
+		c.SetStatusCode(200)
+	}
+}
 
 func main() {
 	start := time.Now()
@@ -42,17 +64,19 @@ func main() {
 
 	afh := &AccountsFilterHandler{storage}
 	router.Get("/accounts/filter/", func(c *routing.Context) error {
-		afh.ServeHTTP(c)
+		handle(afh, c)
 		return nil
 	})
+
 	agh := &AccountsGroupHandler{storage}
 	router.Get("/accounts/group/", func(c *routing.Context) error {
-		agh.ServeHTTP(c)
+		handle(agh, c)
 		return nil
 	})
+
 	arh := &AccountsRecommendHandler{storage}
 	router.Get("/accounts/<id>/recommend/", func(c *routing.Context) error {
-		arh.ServeHTTP(c)
+		handle(arh, c)
 		return nil
 	})
 

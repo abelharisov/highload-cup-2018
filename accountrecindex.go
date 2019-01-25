@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"math/bits"
 	"sort"
 )
@@ -32,13 +31,13 @@ type AccountRecIndex struct {
 }
 
 func (i *AccountRecIndex) Init() {
-	i.fFree = make(map[int]account, 0)
-	i.fBusy = make(map[int]account, 0)
-	i.fWtf = make(map[int]account, 0)
+	i.fFree = make(map[int]account)
+	i.fBusy = make(map[int]account)
+	i.fWtf = make(map[int]account)
 
-	i.mFree = make(map[int]account, 0)
-	i.mBusy = make(map[int]account, 0)
-	i.mWtf = make(map[int]account, 0)
+	i.mFree = make(map[int]account)
+	i.mBusy = make(map[int]account)
+	i.mWtf = make(map[int]account)
 }
 
 func (i *AccountRecIndex) getCollection(sex string, status int) *map[int]account {
@@ -71,36 +70,36 @@ func (i *AccountRecIndex) Add(a Account) {
 		panic("accounts collection is nil")
 	}
 
-	binary := account{}
+	indexedAccount := account{}
 
 	if a.City == nil {
-		binary.city = 0
+		indexedAccount.city = 0
 	} else {
-		binary.city = i.CityDict.GetId(*a.City)
+		indexedAccount.city = i.CityDict.GetId(*a.City)
 	}
 
 	if a.Country == nil {
-		binary.country = 0
+		indexedAccount.country = 0
 	} else {
-		binary.country = i.CountryDict.GetId(*a.Country)
+		indexedAccount.country = i.CountryDict.GetId(*a.Country)
 	}
 
-	binary.birth = *a.Birth
-	binary.premium = a.PremiumStatus
+	indexedAccount.birth = *a.Birth
+	indexedAccount.premium = a.PremiumStatus
 
 	if a.Interests != nil {
 		for _, interest := range *a.Interests {
 			id := i.InterestDict.GetId(interest)
 			var byte = uint64(1) << id
 			if id > 63 {
-				binary.interestsB += byte
+				indexedAccount.interestsB += byte
 			} else {
-				binary.interestsA += byte
+				indexedAccount.interestsA += byte
 			}
 		}
 	}
 
-	(*col)[a.Id] = binary
+	(*col)[a.Id] = indexedAccount
 }
 
 type AccountRecArray []AccountRec
@@ -129,9 +128,6 @@ const MaxBirthScore_______ = 2147483648
 
 func (i *AccountRecIndex) Recommend(a Account, country string, city string, limit int) (result []int) {
 	sex := "f"
-	if a.Sex == nil {
-		panic(errors.New("wtf!!!!"))
-	}
 	if *a.Sex == "f" {
 		sex = "m"
 	}
@@ -157,7 +153,7 @@ func (i *AccountRecIndex) Recommend(a Account, country string, city string, limi
 			}
 
 			if ((target.interestsA & binary.interestsA) | (target.interestsB & binary.interestsB)) != 0 {
-				birthScore := MaxBirthScore_______ - int(abs(int64(target.birth)-int64(binary.birth)))
+				birthScore := MaxBirthScore_______ - int(Abs(int64(target.birth)-int64(binary.birth)))
 				premiumScore := PremiumСoefficient__
 				if binary.premium != PremiumActive {
 					premiumScore = 0
@@ -173,7 +169,6 @@ func (i *AccountRecIndex) Recommend(a Account, country string, city string, limi
 
 	sort.Sort(AccountRecArray(ids))
 
-	// log.Println(limit)
 	result = make([]int, 0, limit)
 
 	for i := 0; i < limit && i < len(ids); i++ {
@@ -181,9 +176,4 @@ func (i *AccountRecIndex) Recommend(a Account, country string, city string, limi
 	}
 
 	return
-}
-
-func abs(n int64) int64 {
-	y := n >> 63
-	return (n ^ y) - y
 }
