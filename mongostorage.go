@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/mongodb/mongo-go-driver/mongo/options"
+
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
@@ -23,6 +25,16 @@ type MongoStorage struct {
 	cityDict     Dict
 
 	recIndex AccountRecIndex
+
+	now int
+}
+
+func (storage *MongoStorage) SetNow(now int) {
+	storage.now = now
+}
+
+func (storage *MongoStorage) GetNow() int {
+	return storage.now
 }
 
 func (storage *MongoStorage) Init() {
@@ -63,19 +75,21 @@ func (storage *MongoStorage) Init() {
 func (storage *MongoStorage) CreateIndexes() {
 	context := context.Background()
 
+	o := options.Index()
+	o.SetUnique(true)
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"id": 1}, Options: o})
+	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"email": 1}, Options: o})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"sex": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"birthYear": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"country": 1}})
 	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"city": 1}})
-	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"email": 1}})
-	storage.accounts.Indexes().CreateOne(context, mongo.IndexModel{Keys: bson.M{"id": 1}})
 }
 
 func (storage *MongoStorage) DropIndexes() {
 	log.Println("Todo")
 }
 
-func (storage *MongoStorage) LoadAccounts(accounts []Account) {
+func (storage *MongoStorage) LoadAccounts(accounts []Account) (err error) {
 	context := context.Background()
 	documents := make([]interface{}, 0, len(accounts))
 
@@ -92,7 +106,13 @@ func (storage *MongoStorage) LoadAccounts(accounts []Account) {
 		}
 		storage.recIndex.Add(account)
 	}
-	storage.accounts.InsertMany(context, documents)
+	_, insertErr := storage.accounts.InsertMany(context, documents)
+	if insertErr != nil {
+		err = &Error{400, insertErr.Error()}
+		return
+	}
+
+	return nil
 }
 
 func (storage *MongoStorage) DropDatabase() {

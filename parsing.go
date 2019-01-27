@@ -11,6 +11,47 @@ import (
 	"time"
 )
 
+func EnrichAccount(account *Account, now int) {
+	if account.Birth != nil {
+		birthYear := time.Unix(int64(*account.Birth), 0).Year()
+		account.BirthYear = &birthYear
+	}
+
+	if account.Joined != nil {
+		joinedYear := time.Unix(int64(*account.Joined), 0).Year()
+		account.JoinedYear = &joinedYear
+	}
+
+	if account.Likes != nil {
+		ids := make([]int, 0, len(*account.Likes))
+		for _, like := range *account.Likes {
+			ids = append(ids, like.Id)
+		}
+		account.LikeIds = &ids
+	}
+
+	if account.Premium == nil {
+		account.PremiumStatus = PremiumNull
+	} else {
+		if account.Premium.Start < int64(now) && int64(now) < account.Premium.Finish {
+			account.PremiumStatus = PremiumActive
+		} else {
+			account.PremiumStatus = PremiumNotActive
+		}
+	}
+
+	if account.Phone != nil {
+		r := regexp.MustCompile(`\((?P<Code>\d.+)\)`)
+		matches := r.FindStringSubmatch(*account.Phone)
+		codeStr := matches[1]
+		if code, err := strconv.Atoi(codeStr); err == nil {
+			account.PhoneCode = code
+		}
+	}
+
+	account.StatusId = ParseStatus(account.Status)
+}
+
 // Parse files in dataPath and put to Storage
 func Parse(dataPath string, optionsPath string, storage Storage, onlyOne bool) error {
 	optionsFile, err := os.Open(optionsPath)
@@ -29,6 +70,7 @@ func Parse(dataPath string, optionsPath string, storage Storage, onlyOne bool) e
 	if err != nil {
 		return err
 	}
+	storage.SetNow(now)
 
 	zipReader, err := zip.OpenReader(dataPath)
 	if err != nil {
@@ -49,41 +91,7 @@ func Parse(dataPath string, optionsPath string, storage Storage, onlyOne bool) e
 		for decoder.More() {
 			var account Account
 			if err := decoder.Decode(&account); err == nil {
-				birthYear := time.Unix(int64(*account.Birth), 0).Year()
-				account.BirthYear = &birthYear
-
-				joinedYear := time.Unix(int64(*account.Joined), 0).Year()
-				account.JoinedYear = &joinedYear
-
-				if account.Likes != nil {
-					ids := make([]int, 0, len(*account.Likes))
-					for _, like := range *account.Likes {
-						ids = append(ids, like.Id)
-					}
-					account.LikeIds = &ids
-				}
-
-				if account.Premium == nil {
-					account.PremiumStatus = PremiumNull
-				} else {
-					if account.Premium.Start < int64(now) && int64(now) < account.Premium.Finish {
-						account.PremiumStatus = PremiumActive
-					} else {
-						account.PremiumStatus = PremiumNotActive
-					}
-				}
-
-				if account.Phone != nil {
-					r := regexp.MustCompile(`\((?P<Code>\d.+)\)`)
-					matches := r.FindStringSubmatch(*account.Phone)
-					codeStr := matches[1]
-					if code, err := strconv.Atoi(codeStr); err == nil {
-						account.PhoneCode = code
-					}
-				}
-
-				account.StatusId = ParseStatus(account.Status)
-
+				EnrichAccount(&account, now)
 				accounts = append(accounts, account)
 			}
 		}
@@ -107,8 +115,10 @@ func ParseStatus(status string) int {
 		return StatusFree
 	case 'з':
 		return StatusBusy
-	default:
+	case 'в':
 		return StatusWtf
+	default:
+		return 0
 	}
 }
 

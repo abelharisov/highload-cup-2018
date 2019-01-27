@@ -62,6 +62,10 @@ func main() {
 	}()
 
 	router := routing.New()
+	router.NotFound(func(c *routing.Context) error {
+		c.SetStatusCode(404)
+		return nil
+	})
 
 	afh := &AccountsFilterHandler{storage}
 	router.Get("/accounts/filter/", func(c *routing.Context) error {
@@ -95,13 +99,13 @@ func main() {
 
 	updateAccountHandler := &AccountsUpdateHandler{storage}
 	router.Post("/accounts/<id>/", func(c *routing.Context) error {
-		handle(updateAccountHandler, c, 201, "")
+		handle(updateAccountHandler, c, 202, "")
 		return nil
 	})
 
 	addLikesHandler := &AccountsLikesHandler{storage}
 	router.Post("/accounts/likes/", func(c *routing.Context) error {
-		handle(addLikesHandler, c, 201, "")
+		handle(addLikesHandler, c, 202, "")
 		return nil
 	})
 

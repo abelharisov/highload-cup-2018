@@ -8,5 +8,5 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprint(e.Code, e.Message)
+	return fmt.Sprint(e.Code, " ",e.Message)
 }
