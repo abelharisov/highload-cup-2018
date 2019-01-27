@@ -11,7 +11,7 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func handle(handler Handler, c *routing.Context) {
+func handle(handler Handler, c *routing.Context, okCode int, badRequestBody string) {
 	c.SetContentType("application/json")
 	c.Response.Header.Set("Connection", "Keep-Alive")
 
@@ -22,7 +22,7 @@ func handle(handler Handler, c *routing.Context) {
 		c.SetStatusCode(code)
 
 		if code == 400 || code == 404 {
-			c.WriteString("{}")
+			c.WriteString(badRequestBody)
 		}
 
 		if code == 500 {
@@ -30,7 +30,7 @@ func handle(handler Handler, c *routing.Context) {
 		}
 		// log.Println(err.Error())
 	} else {
-		c.SetStatusCode(200)
+		c.SetStatusCode(okCode)
 	}
 }
 
@@ -65,25 +65,43 @@ func main() {
 
 	afh := &AccountsFilterHandler{storage}
 	router.Get("/accounts/filter/", func(c *routing.Context) error {
-		handle(afh, c)
+		handle(afh, c, 200, "{}")
 		return nil
 	})
 
 	agh := &AccountsGroupHandler{storage}
 	router.Get("/accounts/group/", func(c *routing.Context) error {
-		handle(agh, c)
+		handle(agh, c, 200, "{}")
 		return nil
 	})
 
 	arh := &AccountsRecommendHandler{storage}
 	router.Get("/accounts/<id>/recommend/", func(c *routing.Context) error {
-		handle(arh, c)
+		handle(arh, c, 200, "{}")
 		return nil
 	})
 
 	ash := &AccountsSuggestHandler{storage}
 	router.Get("/accounts/<id>/suggest/", func(c *routing.Context) error {
-		handle(ash, c)
+		handle(ash, c, 200, "{}")
+		return nil
+	})
+
+	newAccountHandler := &AccountsNewHandler{storage}
+	router.Post("/accounts/new/", func(c *routing.Context) error {
+		handle(newAccountHandler, c, 201, "")
+		return nil
+	})
+
+	updateAccountHandler := &AccountsUpdateHandler{storage}
+	router.Post("/accounts/<id>/", func(c *routing.Context) error {
+		handle(updateAccountHandler, c, 201, "")
+		return nil
+	})
+
+	addLikesHandler := &AccountsLikesHandler{storage}
+	router.Post("/accounts/likes/", func(c *routing.Context) error {
+		handle(addLikesHandler, c, 201, "")
 		return nil
 	})
 
