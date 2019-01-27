@@ -122,8 +122,8 @@ func (a AccountRecArray) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
 
-const PremiumСoefficient__ = 100000000000000
-const StatusСoefficient___ = 1000000000000000
+const PremiumСoefficient__ = 1000000000000000
+const StatusСoefficient___ = 100000000000000
 const InterestsСoefficient = 100000000000
 const MaxBirthScore_______ = 2147483648
 

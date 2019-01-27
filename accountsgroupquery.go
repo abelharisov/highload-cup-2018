@@ -47,7 +47,7 @@ func CreateAccountsGroupQuery(query map[string]string) (accountsGroupQuery Accou
 		return
 	}
 	accountsGroupQuery.Limit, err = strconv.Atoi(limit)
-	if err != nil || accountsGroupQuery.Limit < 0 {
+	if err != nil || accountsGroupQuery.Limit <= 0 {
 		err = &Error{400, fmt.Sprint("Bad limit", limit)}
 		return
 	}

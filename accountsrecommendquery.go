@@ -19,7 +19,7 @@ func CreateAccountsRecommendQuery(idParam string, query map[string]string) (acco
 		return
 	}
 	accountsRecommendQuery.Limit, err = strconv.Atoi(limit)
-	if err != nil || accountsRecommendQuery.Limit < 0 {
+	if err != nil || accountsRecommendQuery.Limit <= 0 {
 		err = &Error{400, fmt.Sprint("bad limit", limit)}
 		return
 	}
