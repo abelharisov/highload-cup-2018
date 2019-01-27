@@ -8,4 +8,5 @@ type Storage interface {
 	Find(query *AccountsQuery) ([]map[string]interface{}, error)
 	Group(query *AccountsGroupQuery) ([]map[string]interface{}, error)
 	Recommend(q *AccountsRecommendQuery) ([]map[string]interface{}, error)
+	Suggset(q *AccountsRecommendQuery) (result []map[string]interface{}, err error)
 }

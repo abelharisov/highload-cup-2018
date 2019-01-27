@@ -12,7 +12,7 @@ type AccountsGroupHandler struct {
 }
 
 func (handler *AccountsGroupHandler) ServeHTTP(c *routing.Context) error {
-	query, err := CreateAccountsGroupQuery(ArgsToMap(c.URI().QueryArgs()))
+	query, err := CreateAccountsGroupQuery(ArgsToMap(c.QueryArgs()))
 	if err != nil {
 		return err
 	}

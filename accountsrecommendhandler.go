@@ -14,7 +14,7 @@ type AccountsRecommendHandler struct {
 
 func (handler *AccountsRecommendHandler) ServeHTTP(c *routing.Context) error {
 	id := c.Param("id")
-	query, err := CreateAccountsRecommendQuery(id, ArgsToMap(c.URI().QueryArgs()))
+	query, err := CreateAccountsRecommendQuery(id, ArgsToMap(c.QueryArgs()))
 	if err != nil {
 		return err
 	}

@@ -28,6 +28,7 @@ func handle(handler Handler, c *routing.Context) {
 		if code == 500 {
 			log.Println(err.Error())
 		}
+		// log.Println(err.Error())
 	} else {
 		c.SetStatusCode(200)
 	}
@@ -77,6 +78,12 @@ func main() {
 	arh := &AccountsRecommendHandler{storage}
 	router.Get("/accounts/<id>/recommend/", func(c *routing.Context) error {
 		handle(arh, c)
+		return nil
+	})
+
+	ash := &AccountsSuggestHandler{storage}
+	router.Get("/accounts/<id>/suggest/", func(c *routing.Context) error {
+		handle(ash, c)
 		return nil
 	})
 

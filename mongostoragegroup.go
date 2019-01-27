@@ -33,9 +33,8 @@ func (storage *MongoStorage) Group(query *AccountsGroupQuery) (result []map[stri
 					"$in": likers,
 				}
 			} else {
-				return // ???
+				return
 			}
-			// match["likeIds"] = likeeId
 		default:
 			match[field] = value
 		}

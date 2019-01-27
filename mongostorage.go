@@ -14,8 +14,9 @@ type MongoStorage struct {
 	client   *mongo.Client
 	accounts *mongo.Collection
 
-	likees    LikeeMap
-	interests InterestsMap
+	likesIndex *LikesIndex
+	likees     LikeeMap
+	interests  InterestsMap
 
 	interestDict Dict
 	countryDict  Dict
@@ -53,6 +54,8 @@ func (storage *MongoStorage) Init() {
 	}
 	storage.recIndex.Init()
 
+	storage.likesIndex = CreateLikesIndex()
+
 	storage.accounts = storage.client.Database(storage.Database).Collection("accounts")
 	storage.CreateIndexes()
 }
@@ -83,6 +86,7 @@ func (storage *MongoStorage) LoadAccounts(accounts []Account) {
 				storage.likees.AppendLiker(likee, account.Id)
 			}
 		}
+		storage.likesIndex.AddLikes(account)
 		if account.Interests != nil {
 			storage.interests.Append(account.Id, *account.Interests)
 		}
