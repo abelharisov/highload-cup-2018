@@ -90,11 +90,12 @@ func (i *AccountRecIndex) Add(a Account) {
 	if a.Interests != nil {
 		for _, interest := range *a.Interests {
 			id := i.InterestDict.GetId(interest)
-			var byte = uint64(1) << id
-			if id > 63 {
-				indexedAccount.interestsB += byte
+			if id >= 64 {
+				var byte = uint64(1) << (id - 64)
+				indexedAccount.interestsB |= byte
 			} else {
-				indexedAccount.interestsA += byte
+				var byte = uint64(1) << id
+				indexedAccount.interestsA |= byte
 			}
 		}
 	}
@@ -123,7 +124,7 @@ func (a AccountRecArray) Swap(i, j int) {
 
 const PremiumСoefficient__ = 100000000000000
 const StatusСoefficient___ = 1000000000000000
-const InterestsСoefficient = 10000000000
+const InterestsСoefficient = 100000000000
 const MaxBirthScore_______ = 2147483648
 
 func (i *AccountRecIndex) Recommend(a Account, country string, city string, limit int) (result []int) {
@@ -158,7 +159,9 @@ func (i *AccountRecIndex) Recommend(a Account, country string, city string, limi
 				if binary.premium != PremiumActive {
 					premiumScore = 0
 				}
-				interestsScore := (bits.OnesCount64(target.interestsA) + bits.OnesCount64(target.interestsB)) * InterestsСoefficient
+				commonInterestsA := bits.OnesCount64(target.interestsA & binary.interestsA)
+				commonInterestsB := bits.OnesCount64(target.interestsB & binary.interestsB)
+				interestsScore := (commonInterestsA + commonInterestsB) * InterestsСoefficient
 				ids = append(ids, AccountRec{
 					id,
 					statusScore + interestsScore + birthScore + premiumScore,
