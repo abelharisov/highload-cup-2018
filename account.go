@@ -13,19 +13,19 @@ type Account struct {
 	City       *string   `bson:"city,omitempty" json:"city"`
 	Joined     *int      `bson:"joined,omitempty" json:"joined"`
 	JoinedYear *int      `bson:"joinedYear,omitempty" json:"-"`
-	Interests  *[]string `bson:"interests,omitempty" json:"interests"`
+	Interests  *[]string `bson:"-" json:"interests"`
 	Status     string    `bson:"status,omitempty" json:"status"`
 	Premium    *struct {
 		Start  int64 `bson:"start,omitempty" json:"start"`
 		Finish int64 `bson:"finish,omitempty" json:"finish"`
 	} `bson:"premium,omitempty" json:"premium"`
 	Likes *[]struct {
-		Id int `bson:"id,omitempty" json:"id"`
-		Ts int `bson:"ts,omitempty" json:"ts"`
-	} `bson:"likes,omitempty" json:"likes"`
+		Id int `bson:"-" json:"id"`
+		Ts int `bson:"-" json:"ts"`
+	} `bson:"-" json:"likes"`
 
 	BirthYear     *int   `bson:"birthYear,omitempty"  json:"-"` // custom field
-	LikeIds       *[]int `bson:"-,omitempty" json:"-"`          // custom
+	LikeIds       *[]int `bson:"-" json:"-"`                    // custom
 	StatusId      int    `bson:"statusId,omitempty" json:"-"`   // custom
 	PremiumStatus int    `bson:"premiumStatus" json:"-"`        // custom
 	PhoneCode     int    `bson:"phoneCode" json:"-"`            // custom

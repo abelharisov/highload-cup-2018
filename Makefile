@@ -1,5 +1,6 @@
 
-DATA_SAMPLE = test_accounts_240119
+# DATA_SAMPLE = test_accounts_240119
+DATA_SAMPLE = rating_accounts_170119
 
 build:
 	docker build -t highloadcup .
@@ -27,5 +28,5 @@ tester_run:
 	# highloadcup_tester -addr http://127.0.0.1:8000 -hlcupdocs ./${DATA_SAMPLE}/ -test -phase 1 -uri \/accounts\/filter\/ -diff true -tank 100
 	# highloadcup_tester -addr http://127.0.0.1:8000 -hlcupdocs ./${DATA_SAMPLE}/ -test -phase 1 -uri \/accounts\/group\/ -diff true -tank 100
 	# highloadcup_tester -addr http://127.0.0.1:8000 -hlcupdocs ./${DATA_SAMPLE}/ -test -phase 1 -diff true -tank 400
-	highloadcup_tester -addr http://127.0.0.1:8000 -hlcupdocs ./${DATA_SAMPLE}/ -test -phase 2 -diff true -tank 400
+	highloadcup_tester -addr http://127.0.0.1:8000 -hlcupdocs ./${DATA_SAMPLE}/ -test -phase 1 -diff true -tank 400
 	docker stop highloadcup-tester-run

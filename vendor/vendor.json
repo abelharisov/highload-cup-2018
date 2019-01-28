@@ -21,6 +21,12 @@
 			"revisionTime": "2018-05-18T05:39:59Z"
 		},
 		{
+			"checksumSHA1": "cervgtZmEhshueHN64+ILdFHmEE=",
+			"path": "github.com/google/btree",
+			"revision": "4030bb1f1f0c35b30ca7009e9ebd06849dd45306",
+			"revisionTime": "2018-08-13T15:31:12Z"
+		},
+		{
 			"checksumSHA1": "kHTr93VYZuhefrA2f+kMQcaRqhw=",
 			"path": "github.com/klauspost/compress/flate",
 			"revision": "30be6041bed523c18e269a700ebd9c2ea9328574",

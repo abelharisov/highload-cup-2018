@@ -11,4 +11,5 @@ type Storage interface {
 	Suggset(q *AccountsRecommendQuery) (result []map[string]interface{}, err error)
 	SetNow(now int)
 	GetNow() int
+	UpdateAccount(id int, account Account) error
 }

@@ -4,9 +4,11 @@ import (
 	"archive/zip"
 	"bufio"
 	"encoding/json"
+	"fmt"
+	"log"
 	"os"
+	"os/exec"
 	"regexp"
-	"sort"
 	"strconv"
 	"time"
 )
@@ -77,10 +79,20 @@ func Parse(dataPath string, optionsPath string, storage Storage, onlyOne bool) e
 		return err
 	}
 	defer zipReader.Close()
-
-	sort.Sort(byFileName(zipReader.File))
 	for _, f := range zipReader.File {
-		reader, _ := f.Open()
+		log.Println("Parsing file", f.Name)
+		top()
+		cmd := exec.Command("unzip", dataPath, f.Name, "-d", "/json/")
+		_, err = cmd.Output()
+		if err != nil {
+			return err
+		}
+
+		reader, err := os.Open(fmt.Sprint("/json/", f.Name))
+		if err != nil {
+			return err
+		}
+
 		decoder := json.NewDecoder(reader)
 		decoder.Token()
 		decoder.Token()
@@ -98,7 +110,14 @@ func Parse(dataPath string, optionsPath string, storage Storage, onlyOne bool) e
 
 		reader.Close()
 
-		storage.LoadAccounts(accounts)
+		err = storage.LoadAccounts(accounts)
+		if err != nil {
+			panic(err)
+		}
+
+		os.Remove(fmt.Sprint("/json/", f.Name))
+
+		top()
 
 		if onlyOne {
 			break
@@ -120,18 +139,4 @@ func ParseStatus(status string) int {
 	default:
 		return 0
 	}
-}
-
-type byFileName []*zip.File
-
-func (files byFileName) Len() int {
-	return len(files)
-}
-
-func (files byFileName) Swap(i, j int) {
-	files[i], files[j] = files[j], files[i]
-}
-
-func (files byFileName) Less(i, j int) bool {
-	return files[i].Name < files[j].Name
 }

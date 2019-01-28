@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"runtime"
 
 	"github.com/mongodb/mongo-go-driver/mongo/options"
 
@@ -16,9 +17,9 @@ type MongoStorage struct {
 	client   *mongo.Client
 	accounts *mongo.Collection
 
-	likesIndex *LikesIndex
-	likees     LikeeMap
-	interests  InterestsMap
+	likesIndex        *LikesIndex
+	likeeToLikerIndex *LikeeToLikerIndex
+	interests         InterestsMap
 
 	interestDict Dict
 	countryDict  Dict
@@ -47,7 +48,7 @@ func (storage *MongoStorage) Init() {
 		panic(err)
 	}
 
-	storage.likees = make(LikeeMap)
+	storage.likeeToLikerIndex = CreateLikeeToLikerIndex()
 	storage.interests = make(InterestsMap)
 
 	storage.interestDict = Dict{}
@@ -90,27 +91,28 @@ func (storage *MongoStorage) DropIndexes() {
 }
 
 func (storage *MongoStorage) LoadAccounts(accounts []Account) (err error) {
-	context := context.Background()
 	documents := make([]interface{}, 0, len(accounts))
 
 	for _, account := range accounts {
 		documents = append(documents, interface{}(account))
 		if account.LikeIds != nil {
 			for _, likee := range *account.LikeIds {
-				storage.likees.AppendLiker(likee, account.Id)
+				storage.likeeToLikerIndex.AppendLiker(likee, account.Id)
 			}
 		}
 		storage.likesIndex.AddLikes(account)
-		if account.Interests != nil {
-			storage.interests.Append(account.Id, *account.Interests)
-		}
-		storage.recIndex.Add(account)
+		// if account.Interests != nil {
+		// 	storage.interests.Append(account.Id, *account.Interests)
+		// }
+		// storage.recIndex.Add(account)
 	}
-	_, insertErr := storage.accounts.InsertMany(context, documents)
+	_, insertErr := storage.accounts.InsertMany(context.Background(), documents)
 	if insertErr != nil {
 		err = &Error{400, insertErr.Error()}
 		return
 	}
+
+	runtime.GC()
 
 	return nil
 }
@@ -118,4 +120,8 @@ func (storage *MongoStorage) LoadAccounts(accounts []Account) (err error) {
 func (storage *MongoStorage) DropDatabase() {
 	context := context.Background()
 	storage.client.Database(storage.Database).Drop(context)
+}
+
+func (storage *MongoStorage) UpdateAccount(id int, account Account) error {
+	return nil
 }

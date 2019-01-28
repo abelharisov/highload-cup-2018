@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -34,9 +35,26 @@ func handle(handler Handler, c *routing.Context, okCode int, badRequestBody stri
 	}
 }
 
+func top() {
+	// cmd := exec.Command("top", "-b", "-n", "1")
+	cmd := exec.Command("cat", "/sys/fs/cgroup/memory/memory.usage_in_bytes")
+	stdout, err := cmd.Output()
+	if err == nil {
+		log.Println("usage: ", string(stdout))
+	}
+}
+
+func topLoop() {
+	top()
+	time.Sleep(60 * time.Second)
+	go topLoop()
+}
+
 func main() {
 	start := time.Now()
 	log.Println("started!")
+
+	go topLoop()
 
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)

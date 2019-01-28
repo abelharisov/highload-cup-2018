@@ -19,12 +19,12 @@ func (s *MongoStorage) Suggset(q *AccountsRecommendQuery) (result []map[string]i
 		return
 	}
 
-	ids := make([]int, 0, len(*likes))
-	for like, _ := range *likes {
+	ids := make([]int, 0, likes.Len())
+	for like, _ := range likes.ids {
 		ids = append(ids, like)
 	}
 
-	similars := s.likees.AccountsWithLikesAny(ids)
+	similars := s.likeeToLikerIndex.AccountsWithLikesAny(ids)
 
 	filterErr := s.filterByCity(q, &similars)
 	if filterErr != nil {
@@ -35,7 +35,7 @@ func (s *MongoStorage) Suggset(q *AccountsRecommendQuery) (result []map[string]i
 	sort.Sort(&bySimilarity{
 		source:     likes,
 		target:     &similars,
-		similarity: map[int]float64{},
+		similarity: map[int]float32{},
 		likesIndex: s.likesIndex},
 	)
 
@@ -53,7 +53,7 @@ func (s *MongoStorage) Suggset(q *AccountsRecommendQuery) (result []map[string]i
 		slikes := s.likesIndex.GetLikes(similarId)
 		// log.Println("slikes", slikes)
 		ids := []int{}
-		for id, _ := range *slikes {
+		for id, _ := range slikes.ids {
 			if !s.likesIndex.HasLike(q.Id, id) {
 				ids = append(ids, id)
 			}
@@ -147,11 +147,11 @@ func (s *MongoStorage) filterByCity(q *AccountsRecommendQuery, similars *[]int) 
 type bySimilarity struct {
 	source     *Likes
 	target     *[]int
-	similarity map[int]float64
+	similarity map[int]float32
 	likesIndex *LikesIndex
 }
 
-func (a *bySimilarity) GetSimilarity(i int) float64 {
+func (a *bySimilarity) GetSimilarity(i int) float32 {
 	id := (*a.target)[i]
 	if value, ok := a.similarity[id]; ok {
 		return value
@@ -162,11 +162,9 @@ func (a *bySimilarity) GetSimilarity(i int) float64 {
 	}
 
 	similarity := 0.0
-	for like, ts := range *a.source {
-		if sameLike, ok := (*likes)[like]; ok {
-			tsA := float64(funk.SumInt(ts)) / float64(len(ts))
-			tsB := float64(funk.SumInt(sameLike)) / float64(len(sameLike))
-			sum := math.Abs(tsA - tsB)
+	for like, ts := range a.source.ids {
+		if sameLikeTs, ok := likes.ids[like]; ok {
+			sum := math.Abs(float64(ts - sameLikeTs))
 			if sum == 0 {
 				sum = 1.0
 			}
@@ -174,7 +172,7 @@ func (a *bySimilarity) GetSimilarity(i int) float64 {
 		}
 	}
 
-	return similarity
+	return float32(similarity)
 
 }
 

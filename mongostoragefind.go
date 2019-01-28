@@ -117,7 +117,7 @@ func (storage *MongoStorage) Find(query *AccountsQuery) (result []map[string]int
 					return
 				}
 			}
-			ids := storage.likees.AccountsWithLikesContains(intValues)
+			ids := storage.likeeToLikerIndex.AccountsWithLikesContains(intValues)
 			if preIds == nil {
 				preIds = &ids
 			} else {

@@ -28,7 +28,8 @@ func (storage *MongoStorage) Group(query *AccountsGroupQuery) (result []map[stri
 				err = &Error{400, fmt.Sprint("Bad like", value)}
 				return
 			}
-			if likers, ok := storage.likees[likeeId]; ok {
+			likers := storage.likeeToLikerIndex.GetLikers(likeeId)
+			if likers != nil {
 				match["id"] = bson.M{
 					"$in": likers,
 				}

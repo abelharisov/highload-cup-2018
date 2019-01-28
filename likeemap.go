@@ -1,25 +1,60 @@
 package main
 
-import funk "github.com/thoas/go-funk"
+import (
+	"github.com/google/btree"
+	"github.com/thoas/go-funk"
+)
 
-type LikeeMap map[int][]int
-
-func (m *LikeeMap) AppendLiker(likeeId int, likerId int) {
-	if _, ok := (*m)[likeeId]; !ok {
-		(*m)[likeeId] = make([]int, 0)
-	}
-	(*m)[likeeId] = append((*m)[likeeId], likerId)
+type likersList struct {
+	likeeId int
+	ids     []int
 }
 
-func (m *LikeeMap) AccountsWithLikesContains(likees []int) (ids []int) {
+func (l likersList) Less(than btree.Item) bool {
+	return l.likeeId < than.(likersList).likeeId
+}
+
+type LikeeToLikerIndex struct {
+	btree *btree.BTree
+}
+
+func CreateLikeeToLikerIndex() *LikeeToLikerIndex {
+	return &LikeeToLikerIndex{
+		btree: btree.New(8),
+	}
+}
+
+func (m *LikeeToLikerIndex) GetLikers(likeeId int) []int {
+	item := m.btree.Get(likersList{likeeId: likeeId})
+	if item != nil {
+		list := item.(likersList)
+		return list.ids
+	}
+
+	return nil
+}
+
+func (m *LikeeToLikerIndex) AppendLiker(likeeId int, likerId int) {
+	item := m.btree.Get(likersList{likeeId: likeeId})
+	if item == nil {
+		m.btree.ReplaceOrInsert(likersList{likeeId, []int{likerId}})
+	} else {
+		list := item.(likersList)
+		list.ids = append(list.ids, likeeId)
+	}
+}
+
+func (m *LikeeToLikerIndex) AccountsWithLikesContains(likees []int) (ids []int) {
 	var result *[]int
 	for _, likee := range likees {
-		if news, ok := (*m)[likee]; ok {
+		item := m.btree.Get(likersList{likeeId: likee})
+		if item != nil {
+			list := item.(likersList)
 			if result == nil {
-				result = &[]int{}
-				*result = append(*result, news...)
+				result = new([]int)
+				*result = append(*result, list.ids...)
 			} else {
-				*result = funk.Intersect(*result, news).([]int)
+				*result = funk.Intersect(*result, list.ids).([]int)
 			}
 		}
 	}
@@ -31,12 +66,14 @@ func (m *LikeeMap) AccountsWithLikesContains(likees []int) (ids []int) {
 	return
 }
 
-func (m *LikeeMap) AccountsWithLikesAny(likees []int) (ids []int) {
+func (m *LikeeToLikerIndex) AccountsWithLikesAny(likees []int) (ids []int) {
 	ids = []int{}
 
 	for _, likee := range likees {
-		if likers, ok := (*m)[likee]; ok {
-			ids = append(ids, likers...)
+		item := m.btree.Get(likersList{likeeId: likee})
+		if item != nil {
+			list := item.(likersList)
+			ids = append(ids, list.ids...)
 		}
 	}
 

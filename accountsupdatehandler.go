@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strconv"
 
 	routing "github.com/qiangxue/fasthttp-routing"
 )
@@ -11,10 +12,15 @@ type AccountsUpdateHandler struct {
 }
 
 func (handler *AccountsUpdateHandler) ServeHTTP(c *routing.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return &Error{400, "bad id"}
+	}
 	body := c.PostBody()
 
 	var rawAccount map[string]interface{}
-	err := json.Unmarshal(body, &rawAccount)
+	err = json.Unmarshal(body, &rawAccount)
 	if err != nil {
 		return &Error{400, "unmarshall error"}
 	}
@@ -24,20 +30,12 @@ func (handler *AccountsUpdateHandler) ServeHTTP(c *routing.Context) error {
 		}
 	}
 
-	if v, ok := rawAccount["sex"]; !ok || (v != "f" && v != "m") {
+	if v, ok := rawAccount["sex"]; ok && (v != "f" && v != "m") {
 		return &Error{400, "bad sex"}
 	}
 
-	if v, ok := rawAccount["status"]; !ok || ParseStatus(v.(string)) == 0 {
+	if v, ok := rawAccount["status"]; ok && ParseStatus(v.(string)) == 0 {
 		return &Error{400, "bad status"}
-	}
-
-	if _, ok := rawAccount["birth"]; !ok {
-		return &Error{400, "bad birth"}
-	}
-
-	if _, ok := rawAccount["email"]; !ok {
-		return &Error{400, "bad email"}
 	}
 
 	var account Account
@@ -46,7 +44,9 @@ func (handler *AccountsUpdateHandler) ServeHTTP(c *routing.Context) error {
 		return &Error{400, "unmarshall error"}
 	}
 
-	EnrichAccount(&account, handler.storage.GetNow())
+	handler.storage.UpdateAccount(id, account)
+
+	// EnrichAccount(&account, handler.storage.GetNow())
 
 	return nil
 }
